@@ -41,6 +41,7 @@ colsnames.gd <- c('日', '詳細')
 # 列の編集
 colsort <- function(data.colsort, order) {
   data.colsort <- data.colsort[, order]
+  colnames(data.colsort) <- colsnames
 
   data.colsort[, 1] <-
     ifelse(is.na(data.colsort[, 1]), '', data.colsort[, 1])
@@ -54,24 +55,33 @@ colsort <- function(data.colsort, order) {
     ifelse(is.na(data.colsort[, 5]), '', data.colsort[, 5])
   data.colsort[, 6] <-
     ifelse(is.na(data.colsort[, 6]), 0,  data.colsort[, 6])
+  
+  data.colsort[, 1] <- gsub('/', '',  as.matrix(data.colsort[, 1]))
+  data.colsort[, 1] <- gsub('-', '',  as.matrix(data.colsort[, 1]))
+  data.colsort[, 1] <- gsub('年', '',  as.matrix(data.colsort[, 1]))
+  data.colsort[, 1] <- gsub('月', '',  as.matrix(data.colsort[, 1]))
+  data.colsort[, 1] <- gsub('日', '',  as.matrix(data.colsort[, 1]))
+  
+  data.colsort[, 2] <- gsub(',', '',  as.matrix(data.colsort[, 2]))
+  data.colsort[, 3] <- gsub(',', '',  as.matrix(data.colsort[, 3]))
+  data.colsort[, 6] <- gsub(',', '',  as.matrix(data.colsort[, 6]))
 
-  data.colsort[, 2] <- gsub(',', '',  data.colsort[, 2])
-  data.colsort[, 3] <- gsub(',', '',  data.colsort[, 3])
-  data.colsort[, 6] <- gsub(',', '',  data.colsort[, 6])
+  data.colsort[, 2] <- gsub('円', '', as.matrix(data.colsort[, 2]))
+  data.colsort[, 3] <- gsub('円', '', as.matrix(data.colsort[, 3]))
+  data.colsort[, 6] <- gsub('円', '', as.matrix(data.colsort[, 6]))
 
-  data.colsort[, 2] <- gsub('円', '', data.colsort[, 2])
-  data.colsort[, 3] <- gsub('円', '', data.colsort[, 3])
-  data.colsort[, 6] <- gsub('円', '', data.colsort[, 6])
+  data.colsort[, 2] <- gsub(' ', '',  as.matrix(data.colsort[, 2]))
+  data.colsort[, 3] <- gsub(' ', '',  as.matrix(data.colsort[, 3]))
+  data.colsort[, 6] <- gsub(' ', '',  as.matrix(data.colsort[, 6]))
 
-  data.colsort[, 2] <- gsub(' ', '',  data.colsort[, 2])
-  data.colsort[, 3] <- gsub(' ', '',  data.colsort[, 3])
-  data.colsort[, 6] <- gsub(' ', '',  data.colsort[, 6])
+                            
+  data.colsort[, 1] <- as.character(as.matrix(data.colsort[, 1]))
+  data.colsort[, 2] <- as.numeric(as.matrix(data.colsort[, 2]))
+  data.colsort[, 3] <- as.numeric(as.matrix(data.colsort[, 3]))
+  data.colsort[, 4] <- as.character(as.matrix(data.colsort[, 4]))
+  data.colsort[, 5] <- as.character(as.matrix(data.colsort[, 5]))
+  data.colsort[, 6] <- as.numeric(as.matrix(data.colsort[, 6]))
 
-  data.colsort[, 2] <- as.numeric(data.colsort[, 2])
-  data.colsort[, 3] <- as.numeric(data.colsort[, 3])
-  data.colsort[, 6] <- as.numeric(data.colsort[, 6])
-
-  colnames(data.colsort) <- colsnames
   return(data.colsort)
 }
 
@@ -92,10 +102,8 @@ checkDateFormat <- function(dateStr) {
 rowfilter <- function(data.rowfilter, dateRange) {
   Sys.setlocale('LC_TIME', 'C')
   data.rowfilter.char <- as.character(data.rowfilter[, 1])
-  print(data.rowfilter.char)
   data.rowfilter[, 1] <-
     as.Date(data.rowfilter.char, format = '%Y-%m-%d')
-  print(data.rowfilter)
 
   cond <-
     ((as.Date(data.rowfilter$取引日) >= dateRange[1]) &
@@ -112,7 +120,7 @@ readAndSort <- function(input) {
 
     if (endsWith(fpath, '.csv')) {
       # ヘッダ行数検出
-      f <- file(fpath, 'r', encoding = ifelse(grepl('YenFutsuRireki_', fpath),'UTF-8','Shift_JIS'))
+      f <- file(fpath, 'r', encoding = ifelse(grepl('Rireki_', fpath),'UTF-8','Shift_JIS'))
       i <- 0
       j <- 0
       s <- 0
@@ -138,7 +146,7 @@ readAndSort <- function(input) {
         na.strings = '',
         skip = s,
         stringsAsFactors = F,
-        fileEncoding = ifelse(grepl('YenFutsuRireki_', fpath),'utf8','cp932')
+        fileEncoding = ifelse(grepl('Rireki_', fpath),'utf8','cp932')
       )
 
       fo <- c()
@@ -146,18 +154,32 @@ readAndSort <- function(input) {
         fo <- c(1, 4, 5, 2, 3, 6)
         df.csv[is.na(df.csv)] <- 0
       } else if (colnames(df.csv)[3] == '受入金額.円.') {
+        df.csv[1, 3] <- df.csv[1, 3] + df.csv[1, 7]
         fo <- c(1, 3, 4, 5, 6, 7)
+      } else if (colnames(df.csv)[2] == '契約番号') {
+        df.csv.min <- df.csv %>% 
+          group_by(契約番号) %>% 
+          filter(お取り引き日 == min(お取り引き日)) %>%
+          select(契約番号, お取り引き日)
+        df.csv.max <- df.csv %>% 
+          group_by(契約番号) %>% 
+          filter(お取り引き日 == max(お取り引き日)) %>%
+          filter(差し引き残高 != 0) %>%
+          select(契約番号, 差し引き残高, 商品名, 摘要)
+        
+        
+        df.csv <- right_join(df.csv.min, df.csv.max, by = "契約番号")
+        df.csv <- within(df.csv, emp<-0)
+        df.csv <- within(df.csv, cum_sum<-cumsum(as.integer(gsub(',', '', df.csv$差し引き残高))))
+        
+        fo <- c(2, 3, 6, 4, 5, 7)
       }
-
-
+      
       bank <- colsort(df.csv, fo)
-      bank[,1] <- gsub("/", "", gsub("-", "", gsub("年", "", gsub("月", "", gsub("日", "", as.character(bank[,1]))))))
-      bank[,2] <- bank[,2]
-      bank[,3] <- bank[,3]
-      bank[,4] <- as.character(bank[,4])
-      bank[,5] <- as.character(bank[,5])
-      bank[,6] <- bank[,6]
-      print(str(bank))
+      
+      print('bank2')
+      print(bank)
+      
       if(is.null(banks)){
         banks <- bank
       } else {
