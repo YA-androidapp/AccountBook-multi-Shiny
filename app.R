@@ -55,13 +55,13 @@ colsort <- function(data.colsort, order) {
     ifelse(is.na(data.colsort[, 5]), '', data.colsort[, 5])
   data.colsort[, 6] <-
     ifelse(is.na(data.colsort[, 6]), 0,  data.colsort[, 6])
-  
+
   data.colsort[, 1] <- gsub('/', '',  as.matrix(data.colsort[, 1]))
   data.colsort[, 1] <- gsub('-', '',  as.matrix(data.colsort[, 1]))
   data.colsort[, 1] <- gsub('年', '',  as.matrix(data.colsort[, 1]))
   data.colsort[, 1] <- gsub('月', '',  as.matrix(data.colsort[, 1]))
   data.colsort[, 1] <- gsub('日', '',  as.matrix(data.colsort[, 1]))
-  
+
   data.colsort[, 2] <- gsub(',', '',  as.matrix(data.colsort[, 2]))
   data.colsort[, 3] <- gsub(',', '',  as.matrix(data.colsort[, 3]))
   data.colsort[, 6] <- gsub(',', '',  as.matrix(data.colsort[, 6]))
@@ -74,7 +74,7 @@ colsort <- function(data.colsort, order) {
   data.colsort[, 3] <- gsub(' ', '',  as.matrix(data.colsort[, 3]))
   data.colsort[, 6] <- gsub(' ', '',  as.matrix(data.colsort[, 6]))
 
-                            
+
   data.colsort[, 1] <- as.character(as.matrix(data.colsort[, 1]))
   data.colsort[, 2] <- as.numeric(as.matrix(data.colsort[, 2]))
   data.colsort[, 3] <- as.numeric(as.matrix(data.colsort[, 3]))
@@ -157,29 +157,29 @@ readAndSort <- function(input) {
         df.csv[1, 3] <- df.csv[1, 3] + df.csv[1, 7]
         fo <- c(1, 3, 4, 5, 6, 7)
       } else if (colnames(df.csv)[2] == '契約番号') {
-        df.csv.min <- df.csv %>% 
-          group_by(契約番号) %>% 
+        df.csv.min <- df.csv %>%
+          group_by(契約番号) %>%
           filter(お取り引き日 == min(お取り引き日)) %>%
           select(契約番号, お取り引き日)
-        df.csv.max <- df.csv %>% 
-          group_by(契約番号) %>% 
+        df.csv.max <- df.csv %>%
+          group_by(契約番号) %>%
           filter(お取り引き日 == max(お取り引き日)) %>%
           filter(差し引き残高 != 0) %>%
           select(契約番号, 差し引き残高, 商品名, 摘要)
-        
-        
+
+
         df.csv <- right_join(df.csv.min, df.csv.max, by = "契約番号")
         df.csv <- within(df.csv, emp<-0)
         df.csv <- within(df.csv, cum_sum<-cumsum(as.integer(gsub(',', '', df.csv$差し引き残高))))
-        
+
         fo <- c(2, 3, 6, 4, 5, 7)
       }
-      
+
       bank <- colsort(df.csv, fo)
-      
+
       print('bank2')
       print(bank)
-      
+
       if(is.null(banks)){
         banks <- bank
       } else {
@@ -304,15 +304,16 @@ server <- function(input, output) {
         df.filtered.2 %>% group_by(df.filtered.2$取引日) %>%
         arrange(df.filtered.2$現在高) %>%
         filter(row_number() == 1)
-
-      df.xts <- xts(df.filtered.2, df.filtered.2$取引日)
+      df.xts <<- xts(df.filtered.2[,c('現在高')], as.POSIXct(df.filtered.2$取引日))
+      storage.mode(df.xts$現在高) <- "numeric"
+      df.xts$現在高 <- as.numeric(df.xts$現在高)
 
       if (.Platform$OS.type!="unix")
         windowsFonts(gothic = windowsFont('MS Gothic'))
       par(family = 'gothic')
 
       g <- ggplot(df.xts,
-                  aes(x =   取引日,
+                  aes(x =   Index,
                       y =   現在高,
                       group = 1))
       g <- g + geom_line(colour = 'red',
